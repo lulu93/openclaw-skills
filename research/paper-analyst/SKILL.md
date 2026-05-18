@@ -109,6 +109,35 @@ for i, page in enumerate(reader.pages[:2]):
 - 某些 PDF 的文本层是 OCR 或不标准格式，pypdf 可能提取为空，此时需用 `pdftotext` 备选
 - 只用前2页（title + abstract + intro），减少 token 消耗
 
+### 第2.5步：提取模型架构图（仅对模型/方法类论文）
+
+如果论文包含方法/模型架构图（通常是 Figure 1 或 "Method Overview"），将第一页渲染为图片保存到附件目录，在笔记中嵌入：
+
+```bash
+# 用 PyMuPDF 将 PDF 第一页渲染为图片
+python3 << 'PYEOF'
+import fitz
+doc = fitz.open("/tmp/paper_XXXX.pdf")
+page = doc[0]  # 第一页通常包含架构图
+# 高分辨率渲染（300 DPI）
+pix = page.get_pixmap(dpi=300)
+img_path = f"/opt/data/obsidian-vault/附件/{arxiv_id}_fig1.png"
+pix.save(img_path)
+print(f"✅ 架构图已保存: {img_path}")
+doc.close()
+PYEOF
+```
+
+在笔记中引用：
+```markdown
+![架构图](附件/{arxiv_id}_fig1.png)
+```
+
+**注意：**
+- 并非所有论文的架构图都在第一页（有些在第二页或更后），如果第一页渲染后发现没有架构图（只有标题+摘要），可以尝试第2页
+- 对于纯理论/评测/数据集论文可能没有架构图，跳过此步
+- 图片会上传到 GitHub 知识库，注意不要太大（300 DPI 通常 ~2-5MB，不影响）
+
 ### 第3步：精读与分析
 
 使用 pro 模型进行深度分析，输出结构：
@@ -272,3 +301,6 @@ open('/tmp/topic.txt', 'w').write(text)
 ## 参考文件
 
 - `references/cron-subagent-model-override.md` — cron job 替代 delegate_task 实现独立模型的模式详解
+- `references/cross-paper-comparison.md` — 跨论文对比分析方法与维度框架
+- `references/20260518-session-log.md` — 2026-05-18 会话日志 论文分析
+- `templates/cron-job-paper-analysis.md` — 一次性 cron job 创建模板（含时间坑提示）
