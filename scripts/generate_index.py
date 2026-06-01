@@ -1029,8 +1029,8 @@ async function loadHistory() {{
     const data = await r.json();
     if (!data || !data.qa) return;
     for (const qa of data.qa) {{
-      appendMessage('user', qa.question);
-      appendMessage('assistant', qa.answer);
+      appendMessage('user', qa.question, qa.id);
+      appendMessage('assistant', qa.answer, qa.id);
     }}
   }} catch(e) {{
     // History file might not exist yet
