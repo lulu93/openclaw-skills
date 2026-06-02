@@ -974,34 +974,16 @@ def _load_discuss_record(stem):
 def _make_discuss_html(title, file_rel, arxiv_id, stem):
     """Generate the discussion assistant HTML block + JS."""
     record = _load_discuss_record(stem)
-
-    # Build Q&A history HTML
-    qa_html = ''
-    qa_count = 0
-    if record and isinstance(record, dict):
-        qa_list = record.get('qa', [])
-        qa_count = len(qa_list)
-        if qa_count:
-            initial_collapsed = qa_count > 3
-            btn_icon = '▼' if initial_collapsed else '▲'
-            collapsed_cls = ' collapsed' if initial_collapsed else ''
-            summary_text = '全部展开' if initial_collapsed else '全部收起'
-            items = ''
-            for qa in qa_list:
-                qid = qa.get('id', 0)
-                q = str(qa.get('question', ''))
-                a = str(qa.get('answer', ''))
-                items += f'''<div class="qa-item" data-qa-id="{qid}">
-                <div class="qa-q"><span class="qa-btns"><button class="del-btn" onclick="deleteQA({qid},'{stem}')" title="删除">🗑</button><button onclick="toggleQA(this)" title="收起">{btn_icon}</button></span>Q: {q}</div>
-                <div class="qa-a{collapsed_cls}">{a}</div>
-              </div>'''
-            qa_html = f'''<div class="qa-history">
-        <div class="qa-summary" onclick="toggleAllQA()">📝 已有{qa_count}条讨论 ({summary_text})</div>
-        <div class="qa-list">{items}</div>
-      </div>'''
+    has_history = bool(record and isinstance(record, dict) and record.get('qa'))
 
     js_title = title.replace("'", "\\'")
     js_rel = file_rel.replace("'", "\\'")
+
+    qa_html_class = '' if has_history else ' style="display:none"'
+    qa_html = f'''<div class="qa-history"{qa_html_class}>
+    <div class="qa-summary" onclick="toggleAllQA()">📝 讨论记录</div>
+    <div class="qa-list"></div>
+  </div>'''
 
     return f'''<div class="discuss-section">
   <h2>💬 论文讨论助手</h2>
@@ -1024,17 +1006,46 @@ const discInput = document.getElementById('discuss-input');
 const discSend = document.getElementById('discuss-send');
 const discStatus = document.getElementById('discuss-status');
 
-// Load discussion history from JSON on page load
+// Load discussion history from JSON into .qa-list dynamically
 async function loadHistory() {{
   try {{
     const r = await fetch('/讨论记录/' + STEM + '.json');
     if (!r.ok) return;
     const data = await r.json();
-    if (!data || !data.qa) return;
+    if (!data || !data.qa || !data.qa.length) return;
+
+    const list = document.querySelector('.qa-list');
+    const history = document.querySelector('.qa-history');
+    if (!list) return;
+
+    const count = data.qa.length;
+    const collapsed = count > 3;
+    const stem = STEM;
+
+    let html = '';
     for (const qa of data.qa) {{
-      appendMessage('user', qa.question, qa.id);
-      appendMessage('assistant', qa.answer, qa.id);
+      const qid = qa.id || 0;
+      const q = escapeHtml(String(qa.question || ''));
+      const a = escapeHtml(String(qa.answer || ''));
+      const btnIcon = collapsed ? '▼' : '▲';
+      const collapsedCls = collapsed ? ' collapsed' : '';
+      html += '<div class="qa-item" data-qa-id="' + qid + '">'
+        + '<div class="qa-q"><span class="qa-btns"><button class="del-btn" onclick="deleteQA(' + qid + ",'" + stem + ')" title="删除">🗑</button><button onclick="toggleQA(this)" title="收起">' + btnIcon + '</button></span>Q: ' + q + '</div>'
+        + '<div class="qa-a' + collapsedCls + '">' + a + '</div>'
+        + '</div>';
     }}
+    list.innerHTML = html;
+
+    // Update summary text
+    const summary = document.querySelector('.qa-summary');
+    if (summary) {{
+      summary.textContent = collapsed
+        ? '📝 已有' + count + '条讨论 (全部展开)'
+        : '📝 已有' + count + '条讨论 (全部收起)';
+    }}
+
+    // Show the history section
+    if (history) history.style.display = '';
   }} catch(e) {{
     // History file might not exist yet
   }}
