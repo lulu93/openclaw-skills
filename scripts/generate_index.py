@@ -982,20 +982,23 @@ def _make_discuss_html(title, file_rel, arxiv_id, stem):
         qa_list = record.get('qa', [])
         qa_count = len(qa_list)
         if qa_count:
+            initial_collapsed = qa_count > 3
+            btn_icon = '▼' if initial_collapsed else '▲'
+            collapsed_cls = ' collapsed' if initial_collapsed else ''
+            summary_text = '全部展开' if initial_collapsed else '全部收起'
             items = ''
             for qa in qa_list:
                 qid = qa.get('id', 0)
                 q = str(qa.get('question', ''))
                 a = str(qa.get('answer', ''))
                 items += f'''<div class="qa-item" data-qa-id="{qid}">
-                <div class="qa-q"><span class="qa-btns"><button class="del-btn" onclick="deleteQA({qid},'{stem}')" title="删除">🗑</button><button onclick="toggleQA(this)" title="收起">▲</button></span>Q: {q}</div>
-                <div class="qa-a">{a}</div>
+                <div class="qa-q"><span class="qa-btns"><button class="del-btn" onclick="deleteQA({qid},'{stem}')" title="删除">🗑</button><button onclick="toggleQA(this)" title="收起">{btn_icon}</button></span>Q: {q}</div>
+                <div class="qa-a{collapsed_cls}">{a}</div>
               </div>'''
-            shown = 'open' if qa_count <= 3 else ''
-            qa_html = f'''<details class="qa-history" {shown}>
-        <summary class="qa-summary">📝 已有{qa_count}条讨论 (点击展开)</summary>
+            qa_html = f'''<div class="qa-history">
+        <div class="qa-summary" onclick="toggleAllQA()">📝 已有{qa_count}条讨论 ({summary_text})</div>
         <div class="qa-list">{items}</div>
-      </details>'''
+      </div>'''
 
     js_title = title.replace("'", "\\'")
     js_rel = file_rel.replace("'", "\\'")
@@ -1064,6 +1067,26 @@ function toggleQA(btn) {{
   if (!answer) return;
   answer.classList.toggle('collapsed');
   btn.textContent = answer.classList.contains('collapsed') ? '▼' : '▲';
+}}
+
+function toggleAllQA() {{
+  const answers = document.querySelectorAll('.qa-a');
+  const summary = document.querySelector('.qa-summary');
+  if (!answers.length || !summary) return;
+
+  const count = answers.length;
+  const anyExpanded = Array.from(answers).some(a => !a.classList.contains('collapsed'));
+
+  answers.forEach(a => a.classList.toggle('collapsed', anyExpanded));
+
+  // Sync individual toggle buttons
+  document.querySelectorAll('.qa-item .qa-btns button:last-child').forEach(btn => {{
+    btn.textContent = anyExpanded ? '▼' : '▲';
+  }});
+
+  summary.textContent = anyExpanded
+    ? `📝 已有${{count}}条讨论 (全部展开)`
+    : `📝 已有${{count}}条讨论 (全部收起)`;
 }}
 
 async function deleteQA(qaId, stem) {{
