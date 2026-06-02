@@ -939,7 +939,7 @@ _DISCUSS_INLINE_STYLES = '''
 .qa-btns button:hover { opacity: 1; }
 .qa-btns .del-btn:hover { color: #e74c3c; }
 .qa-a.collapsed { display: none; }
-.qa-q { position: relative; }
+.qa-q { position: relative; overflow: hidden; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 '''
 
@@ -1047,7 +1047,7 @@ function appendMessage(role, content, qaId) {{
   if (role === 'user') {{
     div.innerHTML = '<div class=\"qa-q\">Q: ' + escapeHtml(content) + '</div>';
   }} else {{
-    div.innerHTML = '<div class=\"qa-q\"><span class=\"qa-btns\"><button class=\"del-btn\" onclick=\"deleteQA(' + qaId + ',STEM)\" title=\"删除\">🗑</button><button onclick=\"toggleQA(this)\" title=\"收起\">▲</button></span>A: ' + escapeHtml(content) + '</div>';
+    div.innerHTML = '<div class=\"qa-q\"><span class=\"qa-btns\"><button class=\"del-btn\" onclick=\"deleteQA(' + qaId + ',STEM)\" title=\"删除\">🗑</button><button onclick=\"toggleQA(this)\" title=\"收起\">▲</button></span></div><div class=\"qa-a\">' + escapeHtml(content) + '</div>';
   }}
   const inputArea = document.querySelector('.discuss-input-area');
   if (inputArea) {{
@@ -1059,16 +1059,11 @@ function appendMessage(role, content, qaId) {{
 
 function toggleQA(btn) {{
   const item = btn.closest('.qa-item');
-  const answer = item ? item.querySelector('.qa-q, .qa-a') : null;
+  if (!item) return;
+  const answer = item.querySelector('.qa-a');
   if (!answer) return;
-  if (answer.classList.contains('qa-a')) {{
-    answer.classList.toggle('collapsed');
-    btn.textContent = answer.classList.contains('collapsed') ? '▼' : '▲';
-  }} else {{
-    const allText = item.querySelector('.qa-q');
-    if (allText) allText.classList.toggle('collapsed');
-    btn.textContent = allText && allText.classList.contains('collapsed') ? '▼' : '▲';
-  }}
+  answer.classList.toggle('collapsed');
+  btn.textContent = answer.classList.contains('collapsed') ? '▼' : '▲';
 }}
 
 async function deleteQA(qaId, stem) {{
